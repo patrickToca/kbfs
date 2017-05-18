@@ -90,7 +90,7 @@ func MakeTestBlockServerOrBust(t logger.TestLogBackend,
 // MakeTestConfigOrBustLoggedIn creates and returns a config suitable for
 // unit-testing with the given list of users and which (index) user among the list is
 // currently logged in.
-func MakeTestConfigOrBustLoggedIn(t logger.TestLogBackend, loggedIn int,
+func MakeTestConfigOrBustLoggedIn(t logger.TestLogBackend, loggedInIndex int,
 	users ...libkb.NormalizedUsername) *ConfigLocal {
 	log := logger.NewTestLogger(t)
 	config := newConfigForTest(InitDefault, func(m string) logger.Logger {
@@ -105,7 +105,7 @@ func MakeTestConfigOrBustLoggedIn(t logger.TestLogBackend, loggedIn int,
 	config.SetMDOps(NewMDOpsStandard(config))
 
 	localUsers := MakeLocalUsers(users)
-	loggedInUser := localUsers[0]
+	loggedInUser := localUsers[loggedInIndex]
 
 	daemon := NewKeybaseDaemonMemory(loggedInUser.UID, localUsers,
 		config.Codec())
