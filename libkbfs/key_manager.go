@@ -93,7 +93,7 @@ func (km *KeyManagerStandard) getTLFCryptKey(ctx context.Context,
 	kbfscrypto.TLFCryptKey, error) {
 	tlfID := kmd.TlfID()
 
-	if tlfID.IsPublic() {
+	if tlfID.Type() == tlf.Public {
 		return kbfscrypto.PublicTLFCryptKey, nil
 	}
 
@@ -416,7 +416,7 @@ func (km *KeyManagerStandard) identifyUIDSets(ctx context.Context,
 		return err
 	}
 
-	return identifyUserList(ctx, kbpki, kbpki, uids, tlfID.IsPublic())
+	return identifyUserList(ctx, kbpki, kbpki, uids, tlfID.Type() == tlf.Public)
 }
 
 // generateKeyMapForUsers returns a UserDevicePublicKeys object for
@@ -454,13 +454,14 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 	defer func() { km.deferLog.CDebugf(ctx, "Rekey %s done: %+v", md.TlfID(), err) }()
 
 	currKeyGen := md.LatestKeyGeneration()
-	if md.TlfID().IsPublic() != (currKeyGen == PublicKeyGen) {
+	if (md.TlfID().Type() == tlf.Public) != (currKeyGen == PublicKeyGen) {
 		return false, nil, errors.Errorf(
 			"ID %v has isPublic=%t but currKeyGen is %d (isPublic=%t)",
-			md.TlfID(), md.TlfID().IsPublic(), currKeyGen, currKeyGen == PublicKeyGen)
+			md.TlfID(), md.TlfID().Type() == tlf.Public, currKeyGen,
+			currKeyGen == PublicKeyGen)
 	}
 
-	if promptPaper && md.TlfID().IsPublic() {
+	if promptPaper && md.TlfID().Type() == tlf.Public {
 		return false, nil, errors.Errorf("promptPaper set for public TLF %v", md.TlfID())
 	}
 
@@ -477,7 +478,7 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 	}
 
 	isWriter := resolvedHandle.IsWriter(session.UID)
-	if !md.TlfID().IsPublic() && !isWriter {
+	if md.TlfID().Type() != tlf.Public && !isWriter {
 		// If I was already a reader, there's nothing more to do
 		if handle.IsReader(session.UID) {
 			resolvedHandle = handle
@@ -518,7 +519,7 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 
 	// For a public TLF there's no rekeying to be done, but we
 	// should still update the writer list.
-	if md.TlfID().IsPublic() {
+	if md.TlfID().Type() == tlf.Public {
 		if !handleChanged {
 			km.log.CDebugf(ctx,
 				"Skipping rekeying %s (public): handle hasn't changed",

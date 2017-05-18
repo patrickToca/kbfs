@@ -196,7 +196,7 @@ func (md *RootMetadata) Extra() ExtraMetadata {
 
 // IsReadable returns true if the private metadata can be read.
 func (md *RootMetadata) IsReadable() bool {
-	return md.TlfID().IsPublic() || md.data.Dir.IsInitialized()
+	return md.TlfID().Type() == tlf.Public || md.data.Dir.IsInitialized()
 }
 
 func (md *RootMetadata) clearLastRevision() {
@@ -311,7 +311,7 @@ func (md *RootMetadata) MakeBareTlfHandle() (tlf.Handle, error) {
 // IsInitialized returns whether or not this RootMetadata has been initialized
 func (md *RootMetadata) IsInitialized() bool {
 	keyGen := md.LatestKeyGeneration()
-	if md.TlfID().IsPublic() {
+	if md.TlfID().Type() == tlf.Public {
 		return keyGen == PublicKeyGen
 	}
 	// The data is only initialized once we have at least one set of keys
@@ -374,13 +374,13 @@ func (md *RootMetadata) updateFromTlfHandle(newHandle *TlfHandle) error {
 	// TODO: Strengthen check, e.g. make sure every writer/reader
 	// in the old handle is also a writer/reader of the new
 	// handle.
-	if md.TlfID().IsPublic() != newHandle.IsPublic() {
+	if md.TlfID().Type() != newHandle.Type() {
 		return fmt.Errorf(
-			"Trying to update public=%t rmd with public=%t handle",
-			md.TlfID().IsPublic(), newHandle.IsPublic())
+			"Trying to update type=%s rmd with type=%s handle",
+			md.TlfID().Type(), newHandle.Type())
 	}
 
-	if newHandle.IsPublic() {
+	if newHandle.Type() == tlf.Public {
 		md.SetWriters(newHandle.ResolvedWriters())
 	} else {
 		md.SetUnresolvedReaders(newHandle.UnresolvedReaders())

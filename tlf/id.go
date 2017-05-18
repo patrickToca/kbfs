@@ -40,6 +40,19 @@ const (
 	SingleTeam
 )
 
+func (t Type) String() string {
+	switch t {
+	case Private:
+		return "private"
+	case Public:
+		return "public"
+	case SingleTeam:
+		return "singleTeam"
+	default:
+		return fmt.Sprintf("Unknown TLF type: %d", t)
+	}
+}
+
 // ID is a top-level folder ID
 type ID struct {
 	id [idByteLen]byte

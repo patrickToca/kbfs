@@ -251,5 +251,5 @@ func identifyUsersForTLF(ctx context.Context, nug normalizedUsernameGetter,
 // identifyHandle identifies the canonical names in the given handle.
 func identifyHandle(ctx context.Context, nug normalizedUsernameGetter, identifier identifier, h *TlfHandle) error {
 	return identifyUsersForTLF(ctx, nug, identifier,
-		h.ResolvedUsersMap(), h.IsPublic())
+		h.ResolvedUsersMap(), h.Type() == tlf.Public)
 }

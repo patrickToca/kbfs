@@ -193,7 +193,7 @@ func (md *MDServerDisk) getHandleID(ctx context.Context, handle tlf.Handle,
 	}
 
 	// Allocate a new random ID.
-	id, err := md.config.cryptoPure().MakeRandomTlfID(handle.IsPublic())
+	id, err := md.config.cryptoPure().MakeRandomTlfID(handle.Type())
 	if err != nil {
 		return tlf.NullID, false, kbfsmd.ServerError{Err: err}
 	}

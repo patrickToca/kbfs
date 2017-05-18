@@ -96,14 +96,14 @@ func addFakeRMDData(t *testing.T,
 	rmd.SetSerializedPrivateMetadata(buf)
 	rmd.SetLastModifyingWriter(h.FirstResolvedWriter())
 	rmd.SetLastModifyingUser(h.FirstResolvedWriter())
-	if !h.IsPublic() {
+	if h.Type() == tlf.Public {
 		rmd.fakeInitialRekey()
 	}
 }
 
 func newRMDS(t *testing.T, config Config, h *TlfHandle) (
 	*RootMetadataSigned, ExtraMetadata) {
-	id := tlf.FakeID(1, h.IsPublic())
+	id := tlf.FakeID(1, h.Type())
 
 	rmd, err := makeInitialRootMetadata(config.MetadataVersion(), id, h)
 	require.NoError(t, err)

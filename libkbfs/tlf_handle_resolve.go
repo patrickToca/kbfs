@@ -65,10 +65,10 @@ func resolveOneUser(
 }
 
 func makeTlfHandleHelper(
-	ctx context.Context, public bool, writers, readers []resolvableUser,
+	ctx context.Context, t tlf.Type, writers, readers []resolvableUser,
 	extensions []tlf.HandleExtension) (*TlfHandle, error) {
-	if public && len(readers) > 0 {
-		return nil, errors.New("public folder cannot have readers")
+	if t != tlf.Private && len(readers) > 0 {
+		return nil, errors.New("public or team folder cannot have readers")
 	}
 
 	// parallelize the resolutions for each user
@@ -121,13 +121,13 @@ func makeTlfHandleHelper(
 	unresolvedWriters := getSortedUnresolved(usedUnresolvedWriters)
 
 	var unresolvedReaders []keybase1.SocialAssertion
-	if !public {
+	if t == tlf.Private {
 		unresolvedReaders = getSortedUnresolved(usedUnresolvedReaders)
 	}
 
 	writerNames := getSortedNames(usedWNames, unresolvedWriters)
 	canonicalName := strings.Join(writerNames, ",")
-	if !public && len(usedRNames)+len(unresolvedReaders) > 0 {
+	if t == tlf.Private && len(usedRNames)+len(unresolvedReaders) > 0 {
 		readerNames := getSortedNames(usedRNames, unresolvedReaders)
 		canonicalName += ReaderSep + strings.Join(readerNames, ",")
 	}
@@ -138,7 +138,7 @@ func makeTlfHandleHelper(
 	conflictInfo, finalizedInfo := extensionList.Splat()
 
 	h := &TlfHandle{
-		public:            public,
+		tlfType:           t,
 		resolvedWriters:   usedWNames,
 		resolvedReaders:   usedRNames,
 		unresolvedWriters: unresolvedWriters,
@@ -187,7 +187,7 @@ func MakeTlfHandle(
 	}
 
 	var readers []resolvableUser
-	if !bareHandle.IsPublic() {
+	if bareHandle.Type() != tlf.Public {
 		readers = make([]resolvableUser, 0, len(bareHandle.Readers)+len(bareHandle.UnresolvedReaders))
 		for _, r := range bareHandle.Readers {
 			readers = append(readers, resolvableUID{nug, r})
@@ -197,7 +197,8 @@ func MakeTlfHandle(
 		}
 	}
 
-	h, err := makeTlfHandleHelper(ctx, bareHandle.IsPublic(), writers, readers, bareHandle.Extensions())
+	h, err := makeTlfHandleHelper(
+		ctx, bareHandle.Type(), writers, readers, bareHandle.Extensions())
 	if err != nil {
 		return nil, err
 	}
@@ -240,7 +241,7 @@ func (h *TlfHandle) ResolveAgainForUser(ctx context.Context, resolver resolver,
 	}
 
 	var readers []resolvableUser
-	if !h.IsPublic() {
+	if h.Type() == tlf.Private {
 		readers = make([]resolvableUser, 0, len(h.resolvedReaders)+len(h.unresolvedReaders))
 		for uid, r := range h.resolvedReaders {
 			readers = append(readers, resolvableNameUIDPair{r, uid})
@@ -251,7 +252,8 @@ func (h *TlfHandle) ResolveAgainForUser(ctx context.Context, resolver resolver,
 		}
 	}
 
-	newH, err := makeTlfHandleHelper(ctx, h.IsPublic(), writers, readers, h.Extensions())
+	newH, err := makeTlfHandleHelper(
+		ctx, h.Type(), writers, readers, h.Extensions())
 	if err != nil {
 		return nil, err
 	}
@@ -474,7 +476,7 @@ func (ra resolvableAssertion) resolve(ctx context.Context) (
 // parseTlfHandleLoose parses a TLF handle but leaves some of the canonicality
 // checking to public routines like ParseTlfHandle and ParseTlfHandlePreferred.
 func parseTlfHandleLoose(
-	ctx context.Context, kbpki KBPKI, name string, public bool) (
+	ctx context.Context, kbpki KBPKI, name string, t tlf.Type) (
 	*TlfHandle, error) {
 	// Before parsing the tlf handle (which results in identify
 	// calls that cause tracker popups), first see if there's any
@@ -487,7 +489,7 @@ func parseTlfHandleLoose(
 	// This also contains an offline check for canonicality and
 	// whether a public folder has readers.
 	writerNames, readerNames, extensionSuffix, err :=
-		splitAndNormalizeTLFName(name, public)
+		splitAndNormalizeTLFName(name, t)
 	if err != nil {
 		return nil, err
 	}
@@ -512,12 +514,12 @@ func parseTlfHandleLoose(
 		}
 	}
 
-	h, err := makeTlfHandleHelper(ctx, public, writers, readers, extensions)
+	h, err := makeTlfHandleHelper(ctx, t, writers, readers, extensions)
 	if err != nil {
 		return nil, err
 	}
 
-	if !public {
+	if t == tlf.Private {
 		session, err := kbpki.GetCurrentSession(ctx)
 		if err != nil {
 			return nil, err
@@ -572,9 +574,9 @@ func parseTlfHandleLoose(
 // TODO In future perhaps all code should switch over to preferred handles,
 // and rename TlfNameNotCanonical to TlfNameNotPreferred.
 func ParseTlfHandle(
-	ctx context.Context, kbpki KBPKI, name string, public bool) (
+	ctx context.Context, kbpki KBPKI, name string, t tlf.Type) (
 	*TlfHandle, error) {
-	h, err := parseTlfHandleLoose(ctx, kbpki, name, public)
+	h, err := parseTlfHandleLoose(ctx, kbpki, name, t)
 	if err != nil {
 		return nil, err
 	}
@@ -596,9 +598,9 @@ func ParseTlfHandle(
 // TlfNameNotCanonical is returned from this function when the name is
 // not the *preferred* name.
 func ParseTlfHandlePreferred(
-	ctx context.Context, kbpki KBPKI, name string, public bool) (
+	ctx context.Context, kbpki KBPKI, name string, t tlf.Type) (
 	*TlfHandle, error) {
-	h, err := parseTlfHandleLoose(ctx, kbpki, name, public)
+	h, err := parseTlfHandleLoose(ctx, kbpki, name, t)
 	// Return an early if there is an error, except in the case
 	// where both h is not nil and it is a TlfNameNotCanonicalError.
 	// In that case continue and return TlfNameNotCanonical later
@@ -606,7 +608,8 @@ func ParseTlfHandlePreferred(
 	if err != nil && (h == nil || !isTlfNameNotCanonical(err)) {
 		return nil, err
 	}
-	session, err := GetCurrentSessionIfPossible(ctx, kbpki, h.IsPublic())
+	session, err := GetCurrentSessionIfPossible(
+		ctx, kbpki, h.Type() == tlf.Public)
 	if err != nil {
 		return nil, err
 	}

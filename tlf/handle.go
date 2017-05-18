@@ -133,10 +133,14 @@ func MakeHandle(
 	}, nil
 }
 
-// IsPublic returns whether or not this Handle represents a
-// public top-level folder.
-func (h Handle) IsPublic() bool {
-	return len(h.Readers) == 1 && h.Readers[0].Equal(keybase1.PublicUID)
+// Type returns the type of TLF this Handle represents.
+func (h Handle) Type() Type {
+	if len(h.Readers) == 1 && h.Readers[0].Equal(keybase1.PublicUID) {
+		return Public
+	} else if len(h.Writers) == 1 && h.Writers[0].IsTeamOrSubteam() {
+		return SingleTeam
+	}
+	return Private
 }
 
 func (h Handle) findUserInList(user keybase1.UID,

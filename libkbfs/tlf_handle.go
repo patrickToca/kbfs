@@ -28,9 +28,9 @@ type CanonicalTlfName string
 // additional info. This doesn't embed tlf.Handle to avoid having to
 // keep track of data in multiple places.
 type TlfHandle struct {
-	// If this is true, resolvedReaders and unresolvedReaders
+	// If this is not Private, resolvedReaders and unresolvedReaders
 	// should both be nil.
-	public          bool
+	tlfType         tlf.Type
 	resolvedWriters map[keybase1.UID]libkb.NormalizedUsername
 	resolvedReaders map[keybase1.UID]libkb.NormalizedUsername
 	// Both unresolvedWriters and unresolvedReaders are stored in
@@ -44,10 +44,9 @@ type TlfHandle struct {
 	name CanonicalTlfName
 }
 
-// IsPublic returns whether or not this TlfHandle represents a public
-// top-level folder.
-func (h TlfHandle) IsPublic() bool {
-	return h.public
+// Type returns the type of the TLF this TlfHandle represents.
+func (h TlfHandle) Type() tlf.Type {
+	return h.tlfType
 }
 
 // IsWriter returns whether or not the given user is a writer for the
@@ -364,7 +363,7 @@ func (h *TlfHandle) GetCanonicalName() CanonicalTlfName {
 
 // GetCanonicalPath returns the full canonical path of this TLF.
 func (h *TlfHandle) GetCanonicalPath() string {
-	return buildCanonicalPathForTlfName(h.IsPublic(), h.GetCanonicalName())
+	return buildCanonicalPathForTlfName(h.Type(), h.GetCanonicalName())
 }
 
 // ToFavorite converts a TlfHandle into a Favorite, suitable for
@@ -372,7 +371,7 @@ func (h *TlfHandle) GetCanonicalPath() string {
 func (h *TlfHandle) ToFavorite() Favorite {
 	return Favorite{
 		Name:   string(h.GetCanonicalName()),
-		Public: h.IsPublic(),
+		Public: h.Type() == tlf.Public,
 	}
 }
 
@@ -424,7 +423,7 @@ func splitTLFName(name string) (writerNames, readerNames []string,
 // look canonical.
 // Note that ordering differences do not result in TlfNameNotCanonical
 // being returned.
-func splitAndNormalizeTLFName(name string, public bool) (
+func splitAndNormalizeTLFName(name string, t tlf.Type) (
 	writerNames, readerNames []string,
 	extensionSuffix string, err error) {
 	writerNames, readerNames, extensionSuffix, err = splitTLFName(name)
@@ -432,10 +431,9 @@ func splitAndNormalizeTLFName(name string, public bool) (
 		return nil, nil, "", err
 	}
 
-	hasPublic := len(readerNames) == 0
-
-	if public && !hasPublic {
-		// No public folder exists for this folder.
+	hasReaders := len(readerNames) == 0
+	if t != tlf.Private && !hasReaders {
+		// No public/team folder can have readers.
 		return nil, nil, "", NoSuchNameError{Name: name}
 	}
 
@@ -539,8 +537,8 @@ func normalizeNamesInTLF(writerNames, readerNames []string,
 // CheckTlfHandleOffline does light checks whether a TLF handle looks ok,
 // it avoids all network calls.
 func CheckTlfHandleOffline(
-	ctx context.Context, name string, public bool) error {
-	_, _, _, err := splitAndNormalizeTLFName(name, public)
+	ctx context.Context, name string, t tlf.Type) error {
+	_, _, _, err := splitAndNormalizeTLFName(name, t)
 	return err
 }
 

@@ -335,7 +335,7 @@ func injectNewRMD(t *testing.T, config *ConfigMock) (
 	keybase1.UID, tlf.ID, *RootMetadata) {
 	id, h, rmd := createNewRMD(t, config, "alice", false)
 	var keyGen KeyGen
-	if id.IsPublic() {
+	if id.Type() == tlf.Public {
 		keyGen = PublicKeyGen
 	} else {
 		keyGen = 1
@@ -504,7 +504,7 @@ func (p ptrMatcher) String() string {
 }
 
 func fillInNewMD(t *testing.T, config *ConfigMock, rmd *RootMetadata) {
-	if !rmd.TlfID().IsPublic() {
+	if rmd.TlfID().Type() != tlf.Public {
 		rmd.fakeInitialRekey()
 	}
 	rootPtr := BlockPointer{

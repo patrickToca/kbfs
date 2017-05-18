@@ -220,7 +220,7 @@ func NewReadAccessError(h *TlfHandle, username libkb.NormalizedUsername, filenam
 		User:     username,
 		Filename: filename,
 		Tlf:      tlfname,
-		Public:   h.IsPublic(),
+		Public:   h.Type() == tlf.Public,
 	}
 }
 
@@ -230,7 +230,7 @@ func NewWriteAccessError(h *TlfHandle, username libkb.NormalizedUsername, filena
 	public := false
 	if h != nil {
 		tlf = h.GetCanonicalName()
-		public = h.IsPublic()
+		public = h.Type() == tlf.Public
 	}
 	return WriteAccessError{
 		User:     username,

@@ -184,7 +184,7 @@ func TestTlfHandleAccessorsPrivate(t *testing.T) {
 	h, err := ParseTlfHandle(ctx, kbpki, name, false)
 	require.NoError(t, err)
 
-	require.False(t, h.IsPublic())
+	require.False(t, h.Type() == tlf.Public)
 
 	require.True(t, h.IsWriter(localUsers[0].UID))
 	require.True(t, h.IsReader(localUsers[0].UID))
@@ -253,7 +253,7 @@ func TestTlfHandleAccessorsPublic(t *testing.T) {
 	h, err := ParseTlfHandle(ctx, kbpki, name, true)
 	require.NoError(t, err)
 
-	require.True(t, h.IsPublic())
+	require.True(t, h.Type() == tlf.Public)
 
 	require.True(t, h.IsWriter(localUsers[0].UID))
 	require.True(t, h.IsReader(localUsers[0].UID))

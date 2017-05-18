@@ -785,7 +785,7 @@ func (fbo *folderBranchOps) setHeadLocked(
 		// Let any listeners know that this folder is now readable,
 		// which may indicate that a rekey successfully took place.
 		fbo.config.Reporter().Notify(ctx, mdReadSuccessNotification(
-			md.GetTlfHandle(), md.TlfID().IsPublic()))
+			md.GetTlfHandle(), md.TlfID().Type() == tlf.Public))
 	}
 	return nil
 }
@@ -1098,7 +1098,7 @@ func (fbo *folderBranchOps) getMDForReadHelper(
 	if err != nil {
 		return ImmutableRootMetadata{}, err
 	}
-	if !md.TlfID().IsPublic() {
+	if md.TlfID().Type() != tlf.Public {
 		session, err := fbo.config.KBPKI().GetCurrentSession(ctx)
 		if err != nil {
 			return ImmutableRootMetadata{}, err
@@ -1175,7 +1175,7 @@ func (fbo *folderBranchOps) getMDForReadNeedIdentifyOnMaybeFirstAccess(
 		return ImmutableRootMetadata{}, err
 	}
 
-	if !md.TlfID().IsPublic() {
+	if md.TlfID().Type() != tlf.Public {
 		session, err := fbo.config.KBPKI().GetCurrentSession(ctx)
 		if err != nil {
 			return ImmutableRootMetadata{}, err
@@ -1376,7 +1376,7 @@ func (fbo *folderBranchOps) initMDLocked(
 
 	var expectedKeyGen KeyGen
 	var tlfCryptKey *kbfscrypto.TLFCryptKey
-	if md.TlfID().IsPublic() {
+	if md.TlfID().Type() == tlf.Public {
 		expectedKeyGen = PublicKeyGen
 	} else {
 		var rekeyDone bool
@@ -2405,7 +2405,7 @@ func (fbo *folderBranchOps) checkNewDirSize(ctx context.Context,
 
 // PathType returns path type
 func (fbo *folderBranchOps) PathType() PathType {
-	if fbo.folderBranch.Tlf.IsPublic() {
+	if fbo.folderBranch.Tlf.Type() == tlf.Public {
 		return PublicPathType
 	}
 	return PrivatePathType
@@ -6067,7 +6067,7 @@ func (fbo *folderBranchOps) PushStatusChange() {
 // ClearPrivateFolderMD implements the KBFSOps interface for
 // folderBranchOps.
 func (fbo *folderBranchOps) ClearPrivateFolderMD(ctx context.Context) {
-	if fbo.folderBranch.Tlf.IsPublic() {
+	if fbo.folderBranch.Tlf.Type() == tlf.Public {
 		return
 	}
 

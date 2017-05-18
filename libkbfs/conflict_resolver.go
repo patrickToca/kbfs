@@ -16,6 +16,7 @@ import (
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/kbfsmd"
 	"github.com/keybase/kbfs/kbfssync"
+	"github.com/keybase/kbfs/tlf"
 	"golang.org/x/net/context"
 )
 
@@ -3000,7 +3001,7 @@ outer:
 	}
 	handle := head.GetTlfHandle()
 	cr.config.Reporter().ReportErr(ctx,
-		handle.GetCanonicalName(), handle.IsPublic(),
+		handle.GetCanonicalName(), handle.Type() == tlf.Public,
 		WriteMode, reportedError)
 	return nil
 }
@@ -3032,7 +3033,7 @@ func (cr *ConflictResolver) doResolve(ctx context.Context, ci conflictInput) {
 			}
 			handle := head.GetTlfHandle()
 			cr.config.Reporter().ReportErr(ctx,
-				handle.GetCanonicalName(), handle.IsPublic(),
+				handle.GetCanonicalName(), handle.Type() == tlf.Public,
 				WriteMode, CRWrapError{err})
 			if err == context.Canceled {
 				cr.inputLock.Lock()

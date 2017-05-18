@@ -863,7 +863,7 @@ type DiskBlockCache interface {
 // implicit state, i.e. they're pure functions of the input.
 type cryptoPure interface {
 	// MakeRandomTlfID generates a dir ID using a CSPRNG.
-	MakeRandomTlfID(isPublic bool) (tlf.ID, error)
+	MakeRandomTlfID(t tlf.Type) (tlf.ID, error)
 
 	// MakeRandomBranchID generates a per-device branch ID using a
 	// CSPRNG.  It will not return LocalSquashBranchID or

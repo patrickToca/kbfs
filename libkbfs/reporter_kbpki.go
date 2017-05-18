@@ -260,7 +260,7 @@ func (r *ReporterKBPKI) send(ctx context.Context) {
 // write events.
 func writeNotification(file path, finish bool) *keybase1.FSNotification {
 	n := baseNotification(file, finish)
-	if file.Tlf.IsPublic() {
+	if file.Tlf.Type() == tlf.Public {
 		n.NotificationType = keybase1.FSNotificationType_SIGNING
 	} else {
 		n.NotificationType = keybase1.FSNotificationType_ENCRYPTING
@@ -272,7 +272,7 @@ func writeNotification(file path, finish bool) *keybase1.FSNotification {
 // read events.
 func readNotification(file path, finish bool) *keybase1.FSNotification {
 	n := baseNotification(file, finish)
-	if file.Tlf.IsPublic() {
+	if file.Tlf.Type() == tlf.Public {
 		n.NotificationType = keybase1.FSNotificationType_VERIFYING
 	} else {
 		n.NotificationType = keybase1.FSNotificationType_DECRYPTING
@@ -289,7 +289,7 @@ func rekeyNotification(ctx context.Context, config Config, handle *TlfHandle, fi
 	}
 
 	return &keybase1.FSNotification{
-		PublicTopLevelFolder: handle.IsPublic(),
+		PublicTopLevelFolder: handle.Type() == tlf.Public,
 		Filename:             string(handle.GetCanonicalPath()),
 		StatusCode:           code,
 		NotificationType:     keybase1.FSNotificationType_REKEYING,
@@ -360,7 +360,7 @@ func baseNotification(file path, finish bool) *keybase1.FSNotification {
 	}
 
 	return &keybase1.FSNotification{
-		PublicTopLevelFolder: file.Tlf.IsPublic(),
+		PublicTopLevelFolder: file.Tlf.Type() == tlf.Public,
 		Filename:             file.CanonicalPathString(),
 		StatusCode:           code,
 	}
