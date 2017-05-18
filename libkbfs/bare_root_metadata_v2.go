@@ -78,7 +78,7 @@ func (wmdV2 *WriterMetadataV2) ToWriterMetadataV3() WriterMetadataV3 {
 	wmdV3.UnrefBytes = wmdV2.UnrefBytes
 	wmdV3.MDRefBytes = wmdV2.MDRefBytes
 
-	if wmdV2.ID.IsPublic() {
+	if wmdV2.ID.Type() == tlf.Public {
 		wmdV3.LatestKeyGen = PublicKeyGen
 	} else {
 		wmdV3.LatestKeyGen = wmdV2.WKeys.LatestKeyGeneration()
@@ -142,15 +142,14 @@ type BareRootMetadataV2 struct {
 // must be done separately.
 func MakeInitialBareRootMetadataV2(tlfID tlf.ID, h tlf.Handle) (
 	*BareRootMetadataV2, error) {
-	if tlfID.IsPublic() != h.IsPublic() {
-		return nil, errors.New(
-			"TlfID and TlfHandle disagree on public status")
+	if tlfID.Type() != h.Type() {
+		return nil, errors.New("TlfID and TlfHandle disagree on TLF type")
 	}
 
 	var writers []keybase1.UID
 	var wKeys TLFWriterKeyGenerationsV2
 	var rKeys TLFReaderKeyGenerationsV2
-	if tlfID.IsPublic() {
+	if tlfID.Type() == tlf.Public {
 		writers = make([]keybase1.UID, len(h.Writers))
 		copy(writers, h.Writers)
 	} else {
@@ -205,7 +204,7 @@ func (md *BareRootMetadataV2) KeyGenerationsToUpdate() (KeyGen, KeyGen) {
 // LatestKeyGeneration implements the BareRootMetadata interface for
 // BareRootMetadataV2.
 func (md *BareRootMetadataV2) LatestKeyGeneration() KeyGen {
-	if md.ID.IsPublic() {
+	if md.ID.Type() == tlf.Public {
 		return PublicKeyGen
 	}
 	return md.WKeys.LatestKeyGeneration()
@@ -309,7 +308,7 @@ func (md *BareRootMetadataV2) IsFinal() bool {
 // IsWriter implements the BareRootMetadata interface for BareRootMetadataV2.
 func (md *BareRootMetadataV2) IsWriter(
 	user keybase1.UID, deviceKey kbfscrypto.CryptPublicKey, _ ExtraMetadata) bool {
-	if md.ID.IsPublic() {
+	if md.ID.Type() == tlf.Public {
 		for _, w := range md.Writers {
 			if w == user {
 				return true
@@ -323,7 +322,7 @@ func (md *BareRootMetadataV2) IsWriter(
 // IsReader implements the BareRootMetadata interface for BareRootMetadataV2.
 func (md *BareRootMetadataV2) IsReader(
 	user keybase1.UID, deviceKey kbfscrypto.CryptPublicKey, _ ExtraMetadata) bool {
-	if md.ID.IsPublic() {
+	if md.ID.Type() == tlf.Public {
 		return true
 	}
 	return md.RKeys.IsReader(user, deviceKey)
@@ -554,7 +553,7 @@ func (md *BareRootMetadataV2) CheckValidSuccessorForServer(
 func (md *BareRootMetadataV2) MakeBareTlfHandle(_ ExtraMetadata) (
 	tlf.Handle, error) {
 	var writers, readers []keybase1.UID
-	if md.ID.IsPublic() {
+	if md.ID.Type() == tlf.Public {
 		writers = md.Writers
 		readers = []keybase1.UID{keybase1.PublicUID}
 	} else {
@@ -608,7 +607,7 @@ func (md *BareRootMetadataV2) TlfHandleExtensions() (
 func (md *BareRootMetadataV2) PromoteReaders(
 	readersToPromote map[keybase1.UID]bool,
 	_ ExtraMetadata) error {
-	if md.TlfID().IsPublic() {
+	if md.TlfID().Type() == tlf.Public {
 		return InvalidPublicTLFOperation{md.TlfID(), "PromoteReaders", md.Version()}
 	}
 
@@ -638,7 +637,7 @@ func (md *BareRootMetadataV2) PromoteReaders(
 func (md *BareRootMetadataV2) RevokeRemovedDevices(
 	updatedWriterKeys, updatedReaderKeys UserDevicePublicKeys,
 	_ ExtraMetadata) (ServerHalfRemovalInfo, error) {
-	if md.TlfID().IsPublic() {
+	if md.TlfID().Type() == tlf.Public {
 		return nil, InvalidPublicTLFOperation{
 			md.TlfID(), "RevokeRemovedDevices", md.Version()}
 	}
@@ -678,7 +677,7 @@ func (md *BareRootMetadataV2) RevokeRemovedDevices(
 // yet.
 func (md *BareRootMetadataV2) getTLFKeyBundles(keyGen KeyGen) (
 	*TLFWriterKeyBundleV2, *TLFReaderKeyBundleV2, error) {
-	if md.ID.IsPublic() {
+	if md.ID.Type() == tlf.Public {
 		return nil, nil, InvalidPublicTLFOperation{md.ID, "getTLFKeyBundles", md.Version()}
 	}
 
@@ -696,7 +695,7 @@ func (md *BareRootMetadataV2) getTLFKeyBundles(keyGen KeyGen) (
 // for BareRootMetadataV2.
 func (md *BareRootMetadataV2) GetUserDevicePublicKeys(_ ExtraMetadata) (
 	writerDeviceKeys, readerDeviceKeys UserDevicePublicKeys, err error) {
-	if md.TlfID().IsPublic() {
+	if md.TlfID().Type() == tlf.Public {
 		return nil, nil, InvalidPublicTLFOperation{
 			md.TlfID(), "GetUserDevicePublicKeys", md.Version()}
 	}
@@ -1214,7 +1213,7 @@ func (md *BareRootMetadataV2) AddKeyGeneration(codec kbfscodec.Codec,
 	currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey) (
 	nextExtra ExtraMetadata,
 	serverHalves UserDeviceKeyServerHalves, err error) {
-	if md.TlfID().IsPublic() {
+	if md.TlfID().Type() == tlf.Public {
 		return nil, nil, InvalidPublicTLFOperation{
 			md.TlfID(), "AddKeyGeneration", md.Version()}
 	}
@@ -1282,7 +1281,7 @@ func (md *BareRootMetadataV2) UpdateKeyBundles(crypto cryptoPure,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
 	tlfCryptKeys []kbfscrypto.TLFCryptKey) (
 	[]UserDeviceKeyServerHalves, error) {
-	if md.TlfID().IsPublic() {
+	if md.TlfID().Type() == tlf.Public {
 		return nil, InvalidPublicTLFOperation{
 			md.TlfID(), "UpdateKeyBundles", md.Version()}
 	}

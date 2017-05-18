@@ -184,13 +184,12 @@ func (extra ExtraMetadataV3) GetReaderKeyBundle() TLFReaderKeyBundleV3 {
 // must be done separately.
 func MakeInitialBareRootMetadataV3(tlfID tlf.ID, h tlf.Handle) (
 	*BareRootMetadataV3, error) {
-	if tlfID.IsPublic() != h.IsPublic() {
-		return nil, errors.New(
-			"TlfID and TlfHandle disagree on public status")
+	if tlfID.Type() != h.Type() {
+		return nil, errors.New("TlfID and TlfHandle disagree on TLF type")
 	}
 
 	var writers []keybase1.UID
-	if tlfID.IsPublic() {
+	if tlfID.Type() == tlf.Public {
 		writers = make([]keybase1.UID, len(h.Writers))
 		copy(writers, h.Writers)
 	}
@@ -238,7 +237,7 @@ func (md *BareRootMetadataV3) KeyGenerationsToUpdate() (KeyGen, KeyGen) {
 // LatestKeyGeneration implements the BareRootMetadata interface for
 // BareRootMetadataV3.
 func (md *BareRootMetadataV3) LatestKeyGeneration() KeyGen {
-	if md.TlfID().IsPublic() {
+	if md.TlfID().Type() == tlf.Public {
 		return PublicKeyGen
 	}
 	return md.WriterMetadata.LatestKeyGen
@@ -332,7 +331,7 @@ func (md *BareRootMetadataV3) IsFinal() bool {
 }
 
 func (md *BareRootMetadataV3) checkPublicExtra(extra ExtraMetadata) error {
-	if !md.TlfID().IsPublic() {
+	if !md.TlfID().Type() == tlf.Public {
 		return errors.New("checkPublicExtra called on non-public TLF")
 	}
 
@@ -345,7 +344,7 @@ func (md *BareRootMetadataV3) checkPublicExtra(extra ExtraMetadata) error {
 
 func (md *BareRootMetadataV3) getTLFKeyBundles(extra ExtraMetadata) (
 	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error) {
-	if md.TlfID().IsPublic() {
+	if md.TlfID().Type() == tlf.Public {
 		return nil, nil, InvalidPublicTLFOperation{
 			md.TlfID(), "getTLFKeyBundles", md.Version(),
 		}
@@ -367,7 +366,7 @@ func (md *BareRootMetadataV3) getTLFKeyBundles(extra ExtraMetadata) (
 // IsWriter implements the BareRootMetadata interface for BareRootMetadataV3.
 func (md *BareRootMetadataV3) IsWriter(
 	user keybase1.UID, deviceKey kbfscrypto.CryptPublicKey, extra ExtraMetadata) bool {
-	if md.TlfID().IsPublic() {
+	if md.TlfID().Type() == tlf.Public {
 		err := md.checkPublicExtra(extra)
 		if err != nil {
 			panic(err)
@@ -390,7 +389,7 @@ func (md *BareRootMetadataV3) IsWriter(
 // IsReader implements the BareRootMetadata interface for BareRootMetadataV3.
 func (md *BareRootMetadataV3) IsReader(
 	user keybase1.UID, deviceKey kbfscrypto.CryptPublicKey, extra ExtraMetadata) bool {
-	if md.TlfID().IsPublic() {
+	if md.TlfID().Type() == tlf.Public {
 		err := md.checkPublicExtra(extra)
 		if err != nil {
 			panic(err)
@@ -549,7 +548,7 @@ func (md *BareRootMetadataV3) CheckValidSuccessorForServer(
 func (md *BareRootMetadataV3) MakeBareTlfHandle(extra ExtraMetadata) (
 	tlf.Handle, error) {
 	var writers, readers []keybase1.UID
-	if md.TlfID().IsPublic() {
+	if md.TlfID().Type() == tlf.Public {
 		err := md.checkPublicExtra(extra)
 		if err != nil {
 			return tlf.Handle{}, err
@@ -601,7 +600,7 @@ func (md *BareRootMetadataV3) TlfHandleExtensions() (
 // BareRootMetadataV3.
 func (md *BareRootMetadataV3) PromoteReaders(
 	readersToPromote map[keybase1.UID]bool, extra ExtraMetadata) error {
-	if md.TlfID().IsPublic() {
+	if md.TlfID().Type() == tlf.Public {
 		return InvalidPublicTLFOperation{md.TlfID(), "PromoteReaders", md.Version()}
 	}
 
@@ -639,7 +638,7 @@ func (md *BareRootMetadataV3) PromoteReaders(
 func (md *BareRootMetadataV3) RevokeRemovedDevices(
 	updatedWriterKeys, updatedReaderKeys UserDevicePublicKeys,
 	extra ExtraMetadata) (ServerHalfRemovalInfo, error) {
-	if md.TlfID().IsPublic() {
+	if md.TlfID().Type() == tlf.Public {
 		return nil, InvalidPublicTLFOperation{
 			md.TlfID(), "RevokeRemovedDevices", md.Version()}
 	}
@@ -658,7 +657,7 @@ func (md *BareRootMetadataV3) RevokeRemovedDevices(
 // for BareRootMetadataV3.
 func (md *BareRootMetadataV3) GetUserDevicePublicKeys(extra ExtraMetadata) (
 	writerDeviceKeys, readerDeviceKeys UserDevicePublicKeys, err error) {
-	if md.TlfID().IsPublic() {
+	if md.TlfID().Type() == tlf.Public {
 		return nil, nil, InvalidPublicTLFOperation{
 			md.TlfID(), "GetUserDevicePublicKeys", md.Version()}
 	}
@@ -761,7 +760,7 @@ func checkRKBID(crypto cryptoPure,
 // IsValidAndSigned implements the BareRootMetadata interface for BareRootMetadataV3.
 func (md *BareRootMetadataV3) IsValidAndSigned(
 	codec kbfscodec.Codec, crypto cryptoPure, extra ExtraMetadata) error {
-	if md.TlfID().IsPublic() {
+	if md.TlfID().Type() == tlf.Public {
 		err := md.checkPublicExtra(extra)
 		if err != nil {
 			return err
@@ -1056,7 +1055,7 @@ func (md *BareRootMetadataV3) updateKeyBundles(crypto cryptoPure,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
 	tlfCryptKey kbfscrypto.TLFCryptKey) (UserDeviceKeyServerHalves, error) {
-	if md.TlfID().IsPublic() {
+	if md.TlfID().Type() == tlf.Public {
 		return nil, InvalidPublicTLFOperation{
 			md.TlfID(), "updateKeyBundles", md.Version()}
 	}
@@ -1116,7 +1115,7 @@ func (md *BareRootMetadataV3) AddKeyGeneration(codec kbfscodec.Codec,
 	currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey) (
 	nextExtra ExtraMetadata,
 	serverHalves UserDeviceKeyServerHalves, err error) {
-	if md.TlfID().IsPublic() {
+	if md.TlfID().Type() == tlf.Public {
 		return nil, nil, InvalidPublicTLFOperation{
 			md.TlfID(), "AddKeyGeneration", md.Version()}
 	}
