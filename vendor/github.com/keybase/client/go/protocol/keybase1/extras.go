@@ -19,12 +19,16 @@ import (
 )
 
 const (
-	UID_LEN          = 16
-	UID_SUFFIX       = 0x00
-	UID_SUFFIX_2     = 0x19
-	UID_SUFFIX_HEX   = "00"
-	UID_SUFFIX_2_HEX = "19"
-	PUBLIC_UID       = "ffffffffffffffffffffffffffffff00"
+	UID_LEN                = 16
+	UID_SUFFIX             = 0x00
+	UID_SUFFIX_2           = 0x19
+	UID_SUFFIX_TEAM        = 0x24
+	UID_SUFFIX_SUBTEAM     = 0x25
+	UID_SUFFIX_HEX         = "00"
+	UID_SUFFIX_2_HEX       = "19"
+	UID_SUFFIX_TEAM_HEX    = "24"
+	UID_SUFFIX_SUBTEAM_HEX = "25"
+	PUBLIC_UID             = "ffffffffffffffffffffffffffffff00"
 )
 
 // UID for the special "public" user.
@@ -240,8 +244,11 @@ func UIDFromString(s string) (UID, error) {
 		return "", fmt.Errorf("Bad UID '%s'; must be %d bytes long", s, UID_LEN)
 	}
 	suffix := s[len(s)-2:]
-	if suffix != UID_SUFFIX_HEX && suffix != UID_SUFFIX_2_HEX {
-		return "", fmt.Errorf("Bad UID '%s': must end in 0x%x or 0x%x", s, UID_SUFFIX, UID_SUFFIX_2)
+	if suffix != UID_SUFFIX_HEX && suffix != UID_SUFFIX_2_HEX &&
+		suffix != UID_SUFFIX_TEAM_HEX && suffix != UID_SUFFIX_SUBTEAM_HEX {
+		return "", fmt.Errorf(
+			"Bad UID '%s': must end in 0x%x, 0x%x, 0x%x or 0x%x",
+			s, UID_SUFFIX, UID_SUFFIX_2, UID_SUFFIX_TEAM, UID_SUFFIX_SUBTEAM)
 	}
 	return UID(s), nil
 }
@@ -290,6 +297,21 @@ func (u UID) NotEqual(v UID) bool {
 
 func (u UID) Less(v UID) bool {
 	return u < v
+}
+
+func (u UID) IsTeam() bool {
+	suffix := u[len(u)-2:]
+	return suffix == UID_SUFFIX_TEAM_HEX
+}
+
+func (u UID) IsSubteam() bool {
+	suffix := u[len(u)-2:]
+	return suffix == UID_SUFFIX_SUBTEAM_HEX
+}
+
+func (u UID) IsTeamOrSubteam() bool {
+	suffix := u[len(u)-2:]
+	return suffix == UID_SUFFIX_TEAM_HEX || suffix == UID_SUFFIX_SUBTEAM_HEX
 }
 
 // Returns a number in [0, shardCount) which can be treated as roughly
